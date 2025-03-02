@@ -7,20 +7,12 @@
 
 using namespace std;
 
+/* 用 set 作为容器，epoll 作为触发机制的简易定时器 */
+
 struct TimerNodeBase
 {
     time_t expire;  // 触发事件, Now + 定时时间
-    uint64_t id;    // 由于时间可能重复，所以用 id 唯一表示定时任务q
-
-    bool operator < (const TimerNodeBase &other) const
-    {
-        if(expire < other.expire)
-            return true;
-        else if(expire > other.expire)
-            return false;
-        else
-            return id < other.id;       // 如果触发时间相等，则id的大放在后面触发
-    }
+    uint64_t id;    // 由于时间可能重复，所以用 id 唯一表示定时任务q  
 };
 
 struct TimerNode : public TimerNodeBase
@@ -32,10 +24,19 @@ struct TimerNode : public TimerNodeBase
         : func(func)
         {
             this->expire = expire;
-            this->func = func;
+            this->id = id;
         }
 };
 
+bool operator < (const TimerNodeBase &LTimer, const TimerNodeBase &RTimer)
+{
+    if(LTimer.expire < RTimer.expire)
+        return true;
+    else if(LTimer.expire > RTimer.expire)
+        return false;
+    else
+        return LTimer.id < RTimer.id;       // 如果触发时间相等，则id的大放在后面触发
+}
 
 class Timer
 {
@@ -101,7 +102,7 @@ private:
         return gid++;
     }
     static uint64_t gid;
-    set<TimerNode> timeouts;
+    set<TimerNode, std::less<>> timeouts;
 };
 
 uint64_t Timer::gid = 0;
